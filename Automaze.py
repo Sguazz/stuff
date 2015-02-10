@@ -130,10 +130,6 @@ class Automaze:
             rs = [self._regions[k] for k in self._neighbors(x, y)]
             return OrderedDict.fromkeys([r for r in rs if r >= 0])
 
-        def merge_regions(old, new):
-            for key in self._regions.keys():
-                if self._regions[key] == old: self._regions[key] = new
-
         def get_doors():
             doors = {}
             for x in range(1, self.width, 2):
