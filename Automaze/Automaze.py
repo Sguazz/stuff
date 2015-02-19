@@ -53,6 +53,7 @@ class Automaze:
         self._directions = ['dn', 'rx', 'up', 'lx']
 
         if gen: self.generate()
+        else: self._maze = Map(1, 1)
 
     def generate(self):
         self._maze = Map(self.width, self.height)
@@ -104,7 +105,9 @@ class Automaze:
                       in zip(self._directions, self._neighbors(x, y, 2))
                       if self._can_carve(i, j)]
 
-        next_dir, queue = None, [(x, y)]
+        next_dir = None
+        queue = [(x, y)]
+
         self._carve(x, y)
 
         while queue != []:
@@ -144,15 +147,15 @@ class Automaze:
 
         while doors != {}:
             x, y = choice(list(doors.keys()))
-            new, old = doors[(x, y)]
+            r1, r2 = doors[(x, y)]
 
             self._open_door(x, y)
 
             for k in doors.keys():
-                if doors[k] == [new, old] and uniform(0, 1) < self.extra_doors:
+                if doors[k] == [r1, r2] and uniform(0, 1) < self.extra_doors:
                     self._open_door(*k)
 
-            doors = {k: v for (k, v) in doors.items() if v != [new, old]}
+            doors = {k: v for (k, v) in doors.items() if v != [r1, r2]}
 
     def _remove_deadends(self):
         def count_walls(x, y):
