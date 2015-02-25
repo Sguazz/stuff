@@ -131,21 +131,18 @@ class Automaze:
     def _connect_regions(self):
         def get_neighboring_regions(x, y):
             rs = [self._regions[k] for k in self._neighbors(x, y)]
-            return OrderedDict.fromkeys([r for r in rs if r >= 0])
+            return sorted(OrderedDict.fromkeys([r for r in rs if r >= 0]))
 
         def get_doors():
-            doors = {}
-            for x in range(1, self.width, 2):
-                for y in range(1, self.height, 2):
-                    rs = get_neighboring_regions(x, y)
-                    if not self._can_carve(x, y) or len(rs) != 2: continue
-                    doors[(x, y)] = sorted(rs)
-
-            return doors
+            return {(x, y): rs for x in range(1, self.width, 2)
+                               for y in range(1, self.height, 2)
+                               for rs in [get_neighboring_regions(x, y)]
+                               if self._can_carve(x, y)
+                               if len(rs) == 2}
 
         doors = get_doors()
 
-        while doors != {}:
+        while doors:
             x, y = choice(list(doors.keys()))
             r1, r2 = doors[(x, y)]
 
