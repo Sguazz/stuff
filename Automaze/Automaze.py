@@ -35,10 +35,10 @@ class Map:
         return all([x >= 0, y >= 0, x+w < self.width, y+h < self.height])
 
 class Automaze:
-    def __init__(self, width=150, height=90,
+    def __init__(self, gen=True,
+                 width=150, height=90,
                  windiness=0.1, extra_doors=0.05,
-                 room_tries=350, room_min=17, room_max=21, room_ratio=1.4,
-                 gen=True):
+                 room_tries=350, room_min=17, room_max=21, room_ratio=1.4):
         self.width = width
         self.height = height
 
@@ -52,8 +52,8 @@ class Automaze:
 
         self._directions = ['dn', 'rx', 'up', 'lx']
 
+        self._maze = Map(1, 1)
         if gen: self.generate()
-        else: self._maze = Map(1, 1)
 
     def generate(self):
         self._maze = Map(self.width, self.height)
@@ -144,15 +144,15 @@ class Automaze:
 
         while doors:
             x, y = choice(list(doors.keys()))
-            r1, r2 = doors[(x, y)]
+            rs = doors[(x, y)]
 
             self._open_door(x, y)
 
-            for k in doors.keys():
-                if doors[k] == [r1, r2] and uniform(0, 1) < self.extra_doors:
-                    self._open_door(*k)
+            for (x, y) in doors.keys():
+                if doors[(x, y)] == rs and uniform(0, 1) < self.extra_doors:
+                    self._open_door(x, y)
 
-            doors = {k: v for (k, v) in doors.items() if v != [r1, r2]}
+            doors = {k: v for (k, v) in doors.items() if v != rs}
 
     def _remove_deadends(self):
         def count_walls(x, y):
