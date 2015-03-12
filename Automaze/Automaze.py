@@ -72,14 +72,17 @@ class Automaze:
         return self._maze.printable()
 
     def _add_rooms(self):
+        def odd(n):
+            return int(n/2) * 2 + 1
+
         def stretch(n):
-            return int((n * uniform(1.0, self.room_max_ratio))/2)*2 + 1
+            return odd(n * uniform(1.0, self.room_max_ratio))
 
         for t in range(self.room_attempts):
             x, y = randrange(0, self.width, 2), randrange(0, self.height, 2)
 
-            room_range = self.room_max_size - self.room_min_size + 1
-            w = h = self.room_min_size + randrange(0, room_range, 2)
+            room_range = self.room_max_size - self.room_min_size
+            w = h = odd(self.room_min_size + randrange(room_range))
 
             if t % 2 == 0: w = stretch(w)
             else: h = stretch(h)
@@ -190,8 +193,8 @@ class Automaze:
         self._region_count += 1
 
     def _move(self, d, x, y, steps=1):
-        dx = 0 + steps*((d == 'rx') - (d == 'lx'))
-        dy = 0 + steps*((d == 'dn') - (d == 'up'))
+        dx = steps*((d == 'rx') - (d == 'lx'))
+        dy = steps*((d == 'dn') - (d == 'up'))
         return (x+dx, y+dy)
 
     def _neighbors(self, x, y, dist=1):
