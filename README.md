@@ -2,7 +2,9 @@
 Random and mostly useless stuff I write before going to sleep.
 
 I may or may not keep a brief description of what's in here in this README, but only if I feel like it.
-Hopefully the code itself will be decent, but don't hold your breath waiting for any real documentation.
+Hopefully the code itself will be decent, but that's about it. The small things may not even have tests.
+
+As a general rule, these are just excuses to play with a specific language or with a problem that feels like fun. Sometimes that means reinventing the wheel, and sometimes 
 
 ## Automaze.py
 A simple dungeon generator in Python. Can be run "as is" I think, and outputs to the console.

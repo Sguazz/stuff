@@ -8,7 +8,7 @@ class Map:
         'door': '▒'
     }
 
-    def __init__(self, width, height, default='wall'):
+    def __init__(self, width=1, height=1, default='wall'):
         self.width = width
         self.height = height
         self.map = list(self._tiles[default] * width * height)
@@ -46,13 +46,12 @@ class Automaze:
         self.extra_doors = extra_doors
 
         self.room_attempts = room_tries
-        self.room_min_size = room_min
-        self.room_max_size = room_max
+        self.room_min_size, self.room_max_size = sorted([room_min, room_max])
         self.room_max_ratio = room_ratio
 
         self._directions = ['dn', 'rx', 'up', 'lx']
 
-        self._maze = Map(1, 1)
+        self._maze = Map()
         if gen: self.generate()
 
     def generate(self):
@@ -72,11 +71,8 @@ class Automaze:
         return self._maze.printable()
 
     def _add_rooms(self):
-        def odd(n):
-            return int(n/2) * 2 + 1
-
-        def stretch(n):
-            return odd(n * uniform(1.0, self.room_max_ratio))
+        def odd(n): return int(n/2) * 2 + 1
+        def stretch(n): return odd(n * uniform(1.0, self.room_max_ratio))
 
         for t in range(self.room_attempts):
             x, y = randrange(0, self.width, 2), randrange(0, self.height, 2)
