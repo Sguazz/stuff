@@ -13,3 +13,12 @@ the boxy characters I use to "draw" look kinda square and connect across lines. 
 
 Inspired by (read: basically stolen from) http://journal.stuffwithstuff.com/2014/12/21/rooms-and-mazes/  
 (Thanks, by the way!)
+
+## Scales.hs
+I've (finally!) started to look into musical modes! They're pretty straightforward to compute, but a little messier to visualize on a guitar neck. So this thing prints out a bunch of info about an arbitrary key/mode combination, including a rudimentary representation of a guitar neck.
+
+I'm not sure it'll actually help me to learn anything, because visualizations on a console really can only be so good - I think I'd rather get an app on my phone and be done with it. 
+
+Then again, it's as good an excuse to play with Haskell as any, I guess - I'm still kinda new at it, so yeah. Sometimes I enjoy mixing together the different things I'm trying to learn.
+
+(Which reminds me - I fear the code for this thing wouldn't be considered particularly pretty by those who know anything about Haskell. Sorry. I try.)
