@@ -2,7 +2,7 @@ module Scales where
 
 import Data.List (intercalate)
 
-data Note = C | Cs | D | Ds | E | F | Fs | G | Gs | A | As | B
+data Note = C | Db | D | Eb | E | F | Gb | G | Ab | A | Bb | B
     deriving (Eq, Ord, Show, Enum)
 
 data Interval = Root | MinorSecond | Second | MinorThird | Third |
@@ -70,11 +70,12 @@ neckHeader = unwords . take neckLength . cycle . map fret $ [0..11]
                    | n `elem` neckDots = " " ++ show n ++ " "
                    | otherwise = "   "
 
-printGuitarNeck k m = do
+printEverything :: Key -> Mode -> IO ()
+printEverything k m = do
     putStrLn $ show k ++ " " ++ show m
     print $ scale k m
     print $ modeIntervals m
     putStrLn $ neckHeader
     putStr $ unlines $ map printableString (allStrings k m)
 
-main = printGuitarNeck A Aeolian
+main = printEverything A Aeolian
