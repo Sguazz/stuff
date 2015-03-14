@@ -15,6 +15,8 @@ data Mode = Ionian | Dorian | Phrygian | Lydian | Mixolydian | Aeolian | Locrian
 
 type Key = Note
 
+-- Setup
+
 guitarStrings = [E, B, G, D, A, E]
 neckDots      = [3, 5, 7, 9]
 neckLength    = 13
@@ -24,11 +26,9 @@ majorScale = [Root, Second, Third, PerfectFourth, PerfectFifth, Sixth, Seventh]
 notes      = cycle [C ..]
 intervals  = cycle [Root ..]
 
-neckHeader = unwords . take neckLength . cycle . map fret $ [0..11]
-    where   fret n | n == 0 = " : "
-                   | n `elem` neckDots = " " ++ show n ++ " "
-                   | otherwise = "   "
+-- Actual work
 
+marks :: [Bool]
 marks = map (`elem` majorScale) intervals
 
 grade :: Mode -> Int
@@ -50,9 +50,6 @@ markIntervals m = zip intervals (modeMarks m)
 markString :: Key -> Mode -> Note -> [Bool]
 markString k m n = map snd . dropWhile ((/=n) . fst) $ markNotes k m
 
-allStrings :: Note -> Mode -> [[Bool]]
-allStrings k m = map (markString k m) guitarStrings
-
 getMarked :: [(a, Bool)] -> [a]
 getMarked = map fst . filter snd . take (length [C ..])
 
@@ -62,17 +59,30 @@ modeScale k m = getMarked $ markNotes k m
 modeIntervals :: Mode -> [Interval]
 modeIntervals m = getMarked $ markIntervals m
 
+allStrings :: Note -> Mode -> [[Bool]]
+allStrings k m = map (markString k m) guitarStrings
+
+-- Printing stuff
+
+neckHeader :: String
+neckHeader = unwords . take neckLength . cycle . map fret $ [0..11]
+    where   fret n | n == 0 = " : "
+                   | n `elem` neckDots = " " ++ show n ++ " "
+                   | otherwise = "   "
+
 printableString :: [Bool] -> String
 printableString = intercalate "|" . map fret . take neckLength
     where   fret True  = " + "
             fret False = "   "
+
+wholeNeck :: Key -> Mode -> String
+wholeNeck k m = unlines $ neckHeader : map printableString (allStrings k m)
 
 printEverything :: Key -> Mode -> IO ()
 printEverything k m = do
     putStrLn $ show k ++ " " ++ show m
     print $ modeScale k m
     print $ modeIntervals m
-    putStrLn $ neckHeader
-    putStrLn $ unlines $ map printableString (allStrings k m)
+    putStrLn $ wholeNeck k m
 
 main = printEverything A Aeolian
