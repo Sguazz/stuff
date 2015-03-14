@@ -15,13 +15,19 @@ data Mode = Ionian | Dorian | Phrygian | Lydian | Mixolydian | Aeolian | Locrian
 
 type Key = Note
 
-notes      = cycle [C ..]
-intervals  = cycle [Root ..]
-majorScale = [Root, Second, Third, PerfectFourth, PerfectFifth, Sixth, Seventh]
-
 guitarStrings = [E, B, G, D, A, E]
 neckDots      = [3, 5, 7, 9]
 neckLength    = 13
+
+majorScale = [Root, Second, Third, PerfectFourth, PerfectFifth, Sixth, Seventh]
+
+notes      = cycle [C ..]
+intervals  = cycle [Root ..]
+
+neckHeader = unwords . take neckLength . cycle . map fret $ [0..11]
+    where   fret n | n == 0 = " : "
+                   | n `elem` neckDots = " " ++ show n ++ " "
+                   | otherwise = "   "
 
 marks = map (`elem` majorScale) intervals
 
@@ -61,17 +67,12 @@ printableString = intercalate "|" . map fret . take neckLength
     where   fret True  = " + "
             fret False = "   "
 
-neckHeader = unwords . take neckLength . cycle . map fret $ [0..11]
-    where   fret n | n == 0 = " : "
-                   | n `elem` neckDots = " " ++ show n ++ " "
-                   | otherwise = "   "
-
 printEverything :: Key -> Mode -> IO ()
 printEverything k m = do
     putStrLn $ show k ++ " " ++ show m
     print $ modeScale k m
     print $ modeIntervals m
     putStrLn $ neckHeader
-    putStr $ unlines $ map printableString (allStrings k m)
+    putStrLn $ unlines $ map printableString (allStrings k m)
 
-main = printEverything A Ionian
+main = printEverything A Aeolian
