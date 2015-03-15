@@ -1,6 +1,7 @@
 module Scales where
 
 import Data.List (intercalate)
+import Text.Printf
 
 data Note = C | Cs | D | Ds | E | F | Fs | G | Gs | A | As | B
     deriving (Eq, Ord, Show, Enum)
@@ -62,7 +63,7 @@ markString k s m n = map snd . dropWhile ((/=n) . fst) $ markNotes k s m
 
 modeScale :: Key -> Scale -> Mode -> [(Note, Interval)]
 modeScale k s m = zip notes intervals
-    where   notes = getMarked $ markNotes k s m
+    where   notes     = getMarked $ markNotes k s m
             intervals = getMarked $ markIntervals s m
 
 allStrings :: Note -> Scale -> Mode -> [[Bool]]
@@ -70,30 +71,36 @@ allStrings k s m = map (markString k s m) guitarStrings
 
 -- Printing stuff
 
+pad :: String -> String
+pad = printf "%-2v"
+
 neckHeader :: String
 neckHeader = unwords . take neckLength . cycle . map fret $ [0..11]
     where   fret n | n == 0 = " : "
                    | n `elem` neckDots = " " ++ show n ++ " "
                    | otherwise = "   "
 
-printableString :: [Bool] -> String
-printableString = intercalate "|" . map fret . take neckLength
-    where   fret True  = " + "
+printableString :: (Note, [Bool]) -> String
+printableString (n, fs) = pad (show n) ++ string fs
+    where   string = intercalate "|" . map fret . take neckLength
+            fret True  = " + "
             fret False = "   "
 
 printableScale :: Key -> Scale -> Mode -> String
 printableScale k s m = unlines . tops . map grade $ modeScale k s m
-    where   grade (n, i) = show n ++ " - " ++ show i
+    where   grade (n, i) = pad (show n) ++ " - " ++ show i
             tops = take (length $ scale s)
 
 wholeNeck :: Key -> Scale -> Mode -> String
-wholeNeck k s m = unlines $ neckHeader : map printableString (allStrings k s m)
+wholeNeck k s m = unlines $ paddedHeader : map printableString strings
+    where   paddedHeader = pad "" ++ neckHeader
+            strings = zip guitarStrings (allStrings k s m)
 
 printEverything :: Key -> Scale -> Mode -> IO ()
 printEverything k s m = do
     putStrLn $ show k ++ " " ++ show s ++ " " ++ show m
-    putStrLn $ "--------------"
+    putStrLn $ "---------------"
     putStrLn $ printableScale k s m
     putStrLn $ wholeNeck k s m
 
-main = printEverything A Blues Aeolian
+main = printEverything A Pentatonic Aeolian
