@@ -30,8 +30,6 @@ scale Major      = [Root, Second, Third, PerfectFourth, PerfectFifth, Sixth, Sev
 scale Pentatonic = [Root, Second, Third, PerfectFifth, Sixth]
 scale Blues      = [Root, Second, MinorThird, Third, PerfectFifth, Sixth]
 
-major = scale Major
-
 notes      = cycle [C ..]
 intervals  = cycle [Root ..]
 
@@ -44,7 +42,7 @@ marks :: Scale -> [Bool]
 marks s = map (`elem` scale s) intervals
 
 grade :: Scale -> Mode -> Int
-grade s m = val m . zip [Ionian ..] . getMarked $ zip [0..] (marks s)
+grade s m = val m . zip [Ionian ..] . getMarked $ zip [0..] (marks Major)
     where   val m = snd . head . filter ((==m) . fst)
 
 chromatic :: Key -> [Note]
@@ -98,4 +96,4 @@ printEverything k s m = do
     putStrLn $ printableScale k s m
     putStrLn $ wholeNeck k s m
 
-main = printEverything C Blues Ionian
+main = printEverything A Pentatonic Locrian
