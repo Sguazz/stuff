@@ -41,15 +41,15 @@ getMarked = map fst . filter snd
 marks :: Scale -> [Bool]
 marks s = map (`elem` scale s) intervals
 
-grade :: Scale -> Mode -> Int
-grade s m = val m . zip [Ionian ..] . getMarked $ zip [0..] (marks Major)
+grade :: Mode -> Int
+grade m = val m . zip [Ionian ..] . getMarked $ zip [0..] (marks Major)
     where   val m = snd . head . filter ((==m) . fst)
 
 chromatic :: Key -> [Note]
 chromatic k = dropWhile (/=k) notes
 
 modeMarks :: Scale -> Mode -> [Bool]
-modeMarks s m = drop (grade s m) $ marks s
+modeMarks s m = drop (grade m) $ marks s
 
 markNotes :: Key -> Scale -> Mode -> MarkedList Note
 markNotes k s m = zip (chromatic k) (modeMarks s m)
@@ -92,8 +92,8 @@ wholeNeck k s m = unlines $ neckHeader : map printableString (allStrings k s m)
 printEverything :: Key -> Scale -> Mode -> IO ()
 printEverything k s m = do
     putStrLn $ show k ++ " " ++ show s ++ " " ++ show m
-    putStrLn $ "-----"
+    putStrLn $ "--------------"
     putStrLn $ printableScale k s m
     putStrLn $ wholeNeck k s m
 
-main = printEverything A Pentatonic Locrian
+main = printEverything A Blues Aeolian
