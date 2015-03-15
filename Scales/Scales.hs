@@ -15,24 +15,29 @@ data Mode = Ionian | Dorian | Phrygian | Lydian | Mixolydian | Aeolian | Locrian
 
 type Key = Note
 
+type MarkedList a = [(a, Bool)]
+
 -- Setup
 
 guitarStrings = [E, B, G, D, A, E]
 neckDots      = [3, 5, 7, 9]
 neckLength    = 13
 
-majorScale = [Root, Second, Third, PerfectFourth, PerfectFifth, Sixth, Seventh]
+major = [Root, Second, Third, PerfectFourth, PerfectFifth, Sixth, Seventh]
 
 notes      = cycle [C ..]
 intervals  = cycle [Root ..]
 
 -- Actual work
 
+getMarked :: MarkedList a -> [a]
+getMarked = map fst . filter snd
+
 marks :: [Bool]
-marks = map (`elem` majorScale) intervals
+marks = map (`elem` major) intervals
 
 grade :: Mode -> Int
-grade m = val m . zip [Ionian ..] . map snd . filter fst $ zip marks [0..]
+grade m = val m . zip [Ionian ..] . getMarked $ zip [0..] marks
     where   val m = snd . head . filter ((==m) . fst)
 
 chromatic :: Key -> [Note]
@@ -41,23 +46,17 @@ chromatic k = dropWhile (/=k) notes
 modeMarks :: Mode -> [Bool]
 modeMarks m = drop (grade m) $ marks
 
-markNotes :: Key -> Mode -> [(Note, Bool)]
+markNotes :: Key -> Mode -> MarkedList Note
 markNotes k m = zip (chromatic k) (modeMarks m)
 
-markIntervals :: Mode -> [(Interval, Bool)]
+markIntervals :: Mode -> MarkedList Interval
 markIntervals m = zip intervals (modeMarks m)
 
 markString :: Key -> Mode -> Note -> [Bool]
 markString k m n = map snd . dropWhile ((/=n) . fst) $ markNotes k m
 
-getMarked :: [(a, Bool)] -> [a]
-getMarked = map fst . filter snd . take (length [C ..])
-
-modeScale :: Key -> Mode -> [Note]
-modeScale k m = getMarked $ markNotes k m
-
-modeIntervals :: Mode -> [Interval]
-modeIntervals m = getMarked $ markIntervals m
+modeScale :: Key -> Mode -> [(Note, Interval)]
+modeScale k m = zip (getMarked $ markNotes k m) (getMarked $ markIntervals m)
 
 allStrings :: Note -> Mode -> [[Bool]]
 allStrings k m = map (markString k m) guitarStrings
@@ -75,14 +74,18 @@ printableString = intercalate "|" . map fret . take neckLength
     where   fret True  = " + "
             fret False = "   "
 
+printableScale :: Key -> Mode -> String
+printableScale k m = unlines . take (length major) . map foo $ modeScale k m
+    where   foo (n, i) = show n ++ " - " ++ show i
+
 wholeNeck :: Key -> Mode -> String
 wholeNeck k m = unlines $ neckHeader : map printableString (allStrings k m)
 
 printEverything :: Key -> Mode -> IO ()
 printEverything k m = do
     putStrLn $ show k ++ " " ++ show m
-    print $ modeScale k m
-    print $ modeIntervals m
+    putStrLn $ "-----"
+    putStrLn $ printableScale k m
     putStrLn $ wholeNeck k m
 
-main = printEverything A Aeolian
+main = printEverything C Ionian
