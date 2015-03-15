@@ -75,8 +75,8 @@ printableString = intercalate "|" . map fret . take neckLength
             fret False = "   "
 
 printableScale :: Key -> Mode -> String
-printableScale k m = unlines . take (length major) . map foo $ modeScale k m
-    where   foo (n, i) = show n ++ " - " ++ show i
+printableScale k m = unlines . take (length major) . map grade $ modeScale k m
+    where   grade (n, i) = show n ++ " - " ++ show i
 
 wholeNeck :: Key -> Mode -> String
 wholeNeck k m = unlines $ neckHeader : map printableString (allStrings k m)
