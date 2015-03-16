@@ -1,13 +1,14 @@
 module Scales where
 
+import System.Environment (getArgs)
 import Data.List (intercalate)
-import Text.Printf
+import Text.Printf (printf)
 
 data Note = C | Cs | D | Ds | E | F | Fs | G | Gs | A | As | B
-    deriving (Eq, Ord, Show, Enum)
+    deriving (Eq, Ord, Show, Read, Enum)
 
 data Scale = Major | Pentatonic | Blues
-    deriving (Eq, Show)
+    deriving (Eq, Show, Read)
 
 data Interval = Root       | MinorSecond   | Second          | MinorThird   |
                 Third      | PerfectFourth | DiminishedFifth | PerfectFifth |
@@ -15,7 +16,7 @@ data Interval = Root       | MinorSecond   | Second          | MinorThird   |
     deriving (Eq, Ord, Show, Enum)
 
 data Mode = Ionian | Dorian | Phrygian | Lydian | Mixolydian | Aeolian | Locrian
-    deriving (Eq, Show, Enum)
+    deriving (Eq, Show, Read, Enum)
 
 type Key = Note
 
@@ -106,4 +107,6 @@ printEverything k s m = do
     putStrLn $ printableScale k s m
     putStrLn $ wholeNeck k s m
 
-main = printEverything A Pentatonic Aeolian
+main = do
+    [key, scale, mode] <- getArgs
+    printEverything (read key) (read scale) (read mode)
