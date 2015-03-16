@@ -71,8 +71,11 @@ allStrings k s m = map (markString k s m) guitarStrings
 
 -- Printing stuff
 
-pad :: String -> String
-pad = printf "%-2v"
+pad   = printf "%-2v"
+clear = "\x1b[39m"
+bar   = "\x1b[37m" ++ "|"
+on    = "\x1b[31m" ++ "x"
+off   = "\x1b[34m" ++ "-"
 
 neckHeader :: String
 neckHeader = unwords . take neckLength . cycle . map fret $ [0..11]
@@ -81,10 +84,10 @@ neckHeader = unwords . take neckLength . cycle . map fret $ [0..11]
                    | otherwise = "   "
 
 printableString :: (Note, [Bool]) -> String
-printableString (n, fs) = pad (show n) ++ string fs
-    where   string = intercalate "|" . map fret . take neckLength
-            fret True  = " + "
-            fret False = "   "
+printableString (n, fs) = pad (show n) ++ string fs ++ clear
+    where   string = intercalate bar . map fret . take neckLength
+            fret True  = off ++ on  ++ off
+            fret False = off ++ off ++ off
 
 printableScale :: Key -> Scale -> Mode -> String
 printableScale k s m = unlines . tops . map grade $ modeScale k s m
