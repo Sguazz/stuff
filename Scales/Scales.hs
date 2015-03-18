@@ -34,6 +34,7 @@ scale Blues      = [Root, Second, MinorThird, Third, PerfectFifth, Sixth]
 
 notes      = cycle [C ..]
 intervals  = cycle [Root ..]
+modes      = cycle [Ionian ..]
 
 -- Actual work
 
@@ -67,8 +68,10 @@ modeScale k s m = zip notes intervals
     where   notes     = getMarked $ markNotes k s m
             intervals = getMarked $ markIntervals s m
 
-allStrings :: Note -> Scale -> Mode -> [[Bool]]
-allStrings k s m = map (markString k s m) guitarStrings
+relatives :: Key -> Scale -> Mode -> [(Note, Mode)]
+relatives k s m = dropWhile ((/= Ionian) . snd) $ zip ns ms
+    where   ns = getMarked $ markNotes k s m
+            ms = dropWhile (/=m) modes
 
 -- Printing stuff
 
@@ -77,6 +80,10 @@ clear = "\x1b[39m"
 bar   = "\x1b[37m" ++ "|"
 on    = "\x1b[31m" ++ "x"
 off   = "\x1b[34m" ++ "-"
+hr    = "---------------"
+
+tops :: Scale -> [a] -> [a]
+tops s = take (length $ scale s)
 
 neckHeader :: String
 neckHeader = unwords . take neckLength . cycle . map fret $ [0..11]
@@ -89,23 +96,29 @@ printableString = (++ clear) . intercalate bar . map fret . take neckLength
     where   fret True  = off ++ on  ++ off
             fret False = off ++ off ++ off
 
-printableScale :: Key -> Scale -> Mode -> String
-printableScale k s m = unlines . tops . map grade $ modeScale k s m
-    where   grade (n, i) = pad (show n) ++ " - " ++ show i
-            tops = take (length $ scale s)
+wholeScale :: Key -> Scale -> Mode -> [String]
+wholeScale k s m = title : hr : printable
+    where   title = show k ++ " " ++ show s ++ " " ++ show m
+            printable = tops s . map grade $ modeScale k s m
+            grade (n, i) = pad (show n) ++ " - " ++ show i
+
+allRelatives :: Key -> Scale -> Mode -> [String]
+allRelatives k s m = title : hr : printable
+    where   title = "Relative Modes"
+            printable = tops s . map grade $ relatives k s m
+            grade (n, m) = pad (show n) ++ " - " ++ show m
 
 wholeNeck :: Key -> Scale -> Mode -> String
 wholeNeck k s m = unlines $ paddedHeader : captionedStrings
     where   paddedHeader = pad "" ++ neckHeader
             captionedStrings =  zipWith (++) captions strings
             captions = map (pad . show) guitarStrings
-            strings = map printableString $ allStrings k s m
+            strings = map (printableString . markString k s m) guitarStrings
 
 printEverything :: Key -> Scale -> Mode -> IO ()
 printEverything k s m = do
-    putStrLn $ show k ++ " " ++ show s ++ " " ++ show m
-    putStrLn $ "---------------"
-    putStrLn $ printableScale k s m
+    putStrLn $ unlines $ wholeScale k s m
+    putStrLn $ unlines $ allRelatives k s m
     putStrLn $ wholeNeck k s m
 
 main = do
