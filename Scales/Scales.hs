@@ -82,9 +82,6 @@ on    = "\x1b[31m" ++ "x"
 off   = "\x1b[34m" ++ "-"
 hr    = "---------------"
 
-tops :: Scale -> [a] -> [a]
-tops s = take (length $ scale s)
-
 neckHeader :: String
 neckHeader = unwords . take neckLength . cycle . map fret $ [0..11]
     where   fret n | n == 0 = " : "
@@ -96,17 +93,18 @@ printableString = (++ clear) . intercalate bar . map fret . take neckLength
     where   fret True  = off ++ on  ++ off
             fret False = off ++ off ++ off
 
+column :: Show a => String -> Scale -> [(Note, a)] -> [String]
+column title s list = title : hr : printable
+    where   printable = take (length $ scale s) . map grade $ list
+            grade (n, a) = pad (show n) ++ " - " ++ show a
+
 wholeScale :: Key -> Scale -> Mode -> [String]
-wholeScale k s m = title : hr : printable
+wholeScale k s m = column title s (modeScale k s m)
     where   title = show k ++ " " ++ show s ++ " " ++ show m
-            printable = tops s . map grade $ modeScale k s m
-            grade (n, i) = pad (show n) ++ " - " ++ show i
 
 allRelatives :: Key -> Scale -> Mode -> [String]
-allRelatives k s m = title : hr : printable
+allRelatives k s m = column title s (relatives k s m)
     where   title = "Relative Modes"
-            printable = tops s . map grade $ relatives k s m
-            grade (n, m) = pad (show n) ++ " - " ++ show m
 
 wholeNeck :: Key -> Scale -> Mode -> String
 wholeNeck k s m = unlines $ paddedHeader : captionedStrings
