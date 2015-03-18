@@ -84,10 +84,9 @@ neckHeader = unwords . take neckLength . cycle . map fret $ [0..11]
                    | n `elem` neckDots = " " ++ show n ++ " "
                    | otherwise = "   "
 
-printableString :: (Note, [Bool]) -> String
-printableString (n, fs) = pad (show n) ++ string fs ++ clear
-    where   string = intercalate bar . map fret . take neckLength
-            fret True  = off ++ on  ++ off
+printableString :: [Bool] -> String
+printableString = (++ clear) . intercalate bar . map fret . take neckLength
+    where   fret True  = off ++ on  ++ off
             fret False = off ++ off ++ off
 
 printableScale :: Key -> Scale -> Mode -> String
@@ -96,9 +95,11 @@ printableScale k s m = unlines . tops . map grade $ modeScale k s m
             tops = take (length $ scale s)
 
 wholeNeck :: Key -> Scale -> Mode -> String
-wholeNeck k s m = unlines $ paddedHeader : map printableString strings
+wholeNeck k s m = unlines $ paddedHeader : captionedStrings
     where   paddedHeader = pad "" ++ neckHeader
-            strings = zip guitarStrings (allStrings k s m)
+            captionedStrings =  zipWith (++) captions strings
+            captions = map (pad . show) guitarStrings
+            strings = map printableString $ allStrings k s m
 
 printEverything :: Key -> Scale -> Mode -> IO ()
 printEverything k s m = do
