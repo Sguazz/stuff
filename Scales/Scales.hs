@@ -1,7 +1,7 @@
 module Scales where
 
 import System.Environment (getArgs)
-import Data.List (intercalate)
+import Data.List (intercalate, nub)
 import Text.Printf (printf)
 
 data Note = C | Cs | D | Ds | E | F | Fs | G | Gs | A | As | B
@@ -38,6 +38,9 @@ modes      = cycle [Ionian ..]
 
 -- Actual work
 
+tops :: Eq a => [a] -> [a]
+tops = nub . take (length $ [C ..])
+
 getMarked :: MarkedList a -> [a]
 getMarked = map fst . filter snd
 
@@ -63,15 +66,21 @@ markIntervals s m = zip intervals (modeMarks s m)
 markString :: Key -> Scale -> Mode -> Note -> [Bool]
 markString k s m n = map snd . dropWhile ((/=n) . fst) $ markNotes k s m
 
+scaleNotes :: Key -> Scale -> Mode -> [Note]
+scaleNotes k s m = getMarked $ markNotes k s m
+
+scaleIntervals :: Scale -> Mode -> [Interval]
+scaleIntervals s m = getMarked $ markIntervals s m
+
 modeScale :: Key -> Scale -> Mode -> [(Note, Interval)]
-modeScale k s m = zip notes intervals
-    where   notes     = getMarked $ markNotes k s m
-            intervals = getMarked $ markIntervals s m
+modeScale k s m = zip (scaleNotes k s m) (scaleIntervals s m)
 
 relatives :: Key -> Scale -> Mode -> [(Note, Mode)]
-relatives k s m = dropWhile ((/= Ionian) . snd) $ zip ns ms
-    where   ns = getMarked $ markNotes k s m
+relatives k s m = inKey . fromTop $ zip ns ms
+    where   ns = scaleNotes k Major m
             ms = dropWhile (/=m) modes
+            fromTop = dropWhile ((/= Ionian) . snd)
+            inKey = filter ((`elem` (tops $ scaleNotes k s m)) . fst)
 
 -- Printing stuff
 
@@ -81,6 +90,13 @@ bar   = "\x1b[37m" ++ "|"
 on    = "\x1b[31m" ++ "x"
 off   = "\x1b[34m" ++ "-"
 hr    = "---------------"
+
+wholeNeck :: Key -> Scale -> Mode -> String
+wholeNeck k s m = unlines $ paddedHeader : captionedStrings
+    where   paddedHeader = pad "" ++ neckHeader
+            captionedStrings =  zipWith (++) captions strings
+            captions = map (pad . show) guitarStrings
+            strings = map (printableString . markString k s m) guitarStrings
 
 neckHeader :: String
 neckHeader = unwords . take neckLength . cycle . map fret $ [0..11]
@@ -93,25 +109,18 @@ printableString = (++ clear) . intercalate bar . map fret . take neckLength
     where   fret True  = off ++ on  ++ off
             fret False = off ++ off ++ off
 
-column :: Show a => String -> Scale -> [(Note, a)] -> [String]
-column title s list = title : hr : printable
-    where   printable = take (length $ scale s) . map grade $ list
-            grade (n, a) = pad (show n) ++ " - " ++ show a
-
 wholeScale :: Key -> Scale -> Mode -> [String]
-wholeScale k s m = column title s (modeScale k s m)
+wholeScale k s m = column title (modeScale k s m)
     where   title = show k ++ " " ++ show s ++ " " ++ show m
 
 allRelatives :: Key -> Scale -> Mode -> [String]
-allRelatives k s m = column title s (relatives k s m)
+allRelatives k s m = column title (relatives k s m)
     where   title = "Relative Modes"
 
-wholeNeck :: Key -> Scale -> Mode -> String
-wholeNeck k s m = unlines $ paddedHeader : captionedStrings
-    where   paddedHeader = pad "" ++ neckHeader
-            captionedStrings =  zipWith (++) captions strings
-            captions = map (pad . show) guitarStrings
-            strings = map (printableString . markString k s m) guitarStrings
+column :: Show a => String -> [(Note, a)] -> [String]
+column title list = title : hr : printable
+    where   printable = tops . map grade $ list
+            grade (n, a) = pad (show n) ++ " - " ++ show a
 
 printEverything :: Key -> Scale -> Mode -> IO ()
 printEverything k s m = do
