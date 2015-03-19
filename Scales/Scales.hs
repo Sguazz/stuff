@@ -32,11 +32,11 @@ scale Major      = [Root, Second, Third, PerfectFourth, PerfectFifth, Sixth, Sev
 scale Pentatonic = [Root, Second, Third, PerfectFifth, Sixth]
 scale Blues      = [Root, Second, MinorThird, Third, PerfectFifth, Sixth]
 
+-- Actual work
+
 notes      = cycle [C ..]
 intervals  = cycle [Root ..]
 modes      = cycle [Ionian ..]
-
--- Actual work
 
 tops :: Eq a => [a] -> [a]
 tops = nub . take (length $ [C ..])
@@ -91,8 +91,8 @@ on    = "\x1b[31m" ++ "x"
 off   = "\x1b[34m" ++ "-"
 hr    = "---------------"
 
-wholeNeck :: Key -> Scale -> Mode -> String
-wholeNeck k s m = unlines $ paddedHeader : captionedStrings
+wholeNeck :: Key -> Scale -> Mode -> [String]
+wholeNeck k s m = paddedHeader : captionedStrings
     where   paddedHeader = pad "" ++ neckHeader
             captionedStrings =  zipWith (++) captions strings
             captions = map (pad . show) guitarStrings
@@ -117,6 +117,13 @@ allRelatives :: Key -> Scale -> Mode -> [String]
 allRelatives k s m = column title (relatives k s m)
     where   title = "Relative Modes"
 
+columnLayout :: [String] -> [String] -> [String]
+columnLayout c1 c2 = zipWith layout (pad c1 (length c2)) (pad c2 (length c1))
+    where   layout l1 l2 = (padSpaces l1) ++ l2
+            pad c n = c ++ replicate (n - length c) ""
+            padSpaces l = l ++ replicate (padLength - length l) ' '
+            padLength = (10+) . maximum . map length $ c1
+
 column :: Show a => String -> [(Note, a)] -> [String]
 column title list = title : hr : printable
     where   printable = tops . map grade $ list
@@ -124,9 +131,8 @@ column title list = title : hr : printable
 
 printEverything :: Key -> Scale -> Mode -> IO ()
 printEverything k s m = do
-    putStrLn $ unlines $ wholeScale k s m
-    putStrLn $ unlines $ allRelatives k s m
-    putStrLn $ wholeNeck k s m
+    putStrLn $ unlines $ columnLayout (wholeScale k s m) (allRelatives k s m)
+    putStrLn $ unlines $ wholeNeck k s m
 
 main = do
     [key, scale, mode] <- getArgs
