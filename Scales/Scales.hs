@@ -2,7 +2,6 @@ module Scales where
 
 import System.Environment (getArgs)
 import Data.List (intercalate, nub)
-import Text.Printf (printf)
 
 data Note = C | Cs | D | Ds | E | F | Fs | G | Gs | A | As | B
     deriving (Eq, Ord, Show, Read, Enum)
@@ -39,7 +38,7 @@ intervals  = cycle [Root ..]
 modes      = cycle [Ionian ..]
 
 tops :: Eq a => [a] -> [a]
-tops = nub . take (length $ [C ..])
+tops = nub . take (length [C ..])
 
 getMarked :: MarkedList a -> [a]
 getMarked = map fst . filter snd
@@ -84,55 +83,58 @@ relatives k s m = inKey . fromTop $ zip ns ms
 
 -- Printing stuff
 
-pad   = printf "%-2v"
 clear = "\x1b[39m"
 bar   = "\x1b[37m" ++ "|"
 on    = "\x1b[31m" ++ "x"
 off   = "\x1b[34m" ++ "-"
 hr    = "---------------"
 
-wholeNeck :: Key -> Scale -> Mode -> [String]
-wholeNeck k s m = paddedHeader : captionedStrings
-    where   paddedHeader = pad "" ++ neckHeader
+padWith :: a -> Int -> [a] -> [a]
+padWith p n s = s ++ replicate (n - length s) p
+
+pad  = padWith ' '
+pad' = padWith ""
+
+guitarNeck :: Key -> Scale -> Mode -> [String]
+guitarNeck k s m = paddedHeader : captionedStrings
+    where   paddedHeader = pad 3 "" ++ neckHeader
             captionedStrings =  zipWith (++) captions strings
-            captions = map (pad . show) guitarStrings
-            strings = map (printableString . markString k s m) guitarStrings
+            captions = map (pad 3 . show) guitarStrings
+            strings = map (guitarString . markString k s m) guitarStrings
 
 neckHeader :: String
-neckHeader = unwords . take neckLength . cycle . map fret $ [0..11]
+neckHeader = unwords . take neckLength . cycle . map fret $ tops [0..]
     where   fret n | n == 0 = " : "
                    | n `elem` neckDots = " " ++ show n ++ " "
                    | otherwise = "   "
 
-printableString :: [Bool] -> String
-printableString = (++ clear) . intercalate bar . map fret . take neckLength
+guitarString :: [Bool] -> String
+guitarString = (++ clear) . intercalate bar . map fret . take neckLength
     where   fret True  = off ++ on  ++ off
             fret False = off ++ off ++ off
 
-wholeScale :: Key -> Scale -> Mode -> [String]
-wholeScale k s m = column title (modeScale k s m)
+fullScale :: Key -> Scale -> Mode -> [String]
+fullScale k s m = column title (modeScale k s m)
     where   title = show k ++ " " ++ show s ++ " " ++ show m
 
-allRelatives :: Key -> Scale -> Mode -> [String]
-allRelatives k s m = column title (relatives k s m)
+relativeModes :: Key -> Scale -> Mode -> [String]
+relativeModes k s m = column title (relatives k s m)
     where   title = "Relative Modes"
 
 columnLayout :: [String] -> [String] -> [String]
-columnLayout c1 c2 = zipWith layout (pad c1 (length c2)) (pad c2 (length c1))
-    where   layout l1 l2 = (padSpaces l1) ++ l2
-            pad c n = c ++ replicate (n - length c) ""
-            padSpaces l = l ++ replicate (padLength - length l) ' '
+columnLayout c1 c2 = zipWith layout (pad' (length c2) c1) (pad' (length c1) c2)
+    where   layout l1 l2 = (pad padLength l1) ++ l2
             padLength = (10+) . maximum . map length $ c1
 
 column :: Show a => String -> [(Note, a)] -> [String]
 column title list = title : hr : printable
     where   printable = tops . map grade $ list
-            grade (n, a) = pad (show n) ++ " - " ++ show a
+            grade (n, a) = pad 2 (show n) ++ " - " ++ show a
 
 printEverything :: Key -> Scale -> Mode -> IO ()
 printEverything k s m = do
-    putStrLn $ unlines $ columnLayout (wholeScale k s m) (allRelatives k s m)
-    putStrLn $ unlines $ wholeNeck k s m
+    putStrLn $ unlines $ columnLayout (fullScale k s m) (relativeModes k s m)
+    putStrLn $ unlines $ guitarNeck k s m
 
 main = do
     [key, scale, mode] <- getArgs
