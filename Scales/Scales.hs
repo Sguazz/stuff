@@ -1,7 +1,7 @@
 module Scales where
 
-import System.Environment (getArgs)
 import Data.List (intercalate, nub)
+import System.Environment (getArgs)
 
 ------------------
 -- Data & Types --
@@ -70,6 +70,12 @@ markList as bs = zip as (marks as bs)
 val :: Eq k => k -> Map k v -> v
 val k = snd . head . filter ((== k) . fst)
 
+dropKeys :: Eq k => k -> Map k v -> Map k v
+dropKeys k = dropWhile ((/= k) . fst)
+
+dropValues :: Eq v => v -> Map k v -> Map k v
+dropValues v = dropWhile ((/= v) . snd)
+
 -- Scales stuff
 
 markNotes :: Scale -> Mode -> Key -> MarkedList Note
@@ -79,7 +85,7 @@ chromatic :: Key -> [Note]
 chromatic k = dropWhile (/= k) notes
 
 allScales :: Scale -> Mode -> [[Note]]
-allScales s m = map (scaleNotes s m) [C ..]
+allScales s m = map (scaleNotes s m) notes
 
 scaleNotes :: Scale -> Mode -> Key -> [Note]
 scaleNotes s m k = getMarked $ markNotes s m k
@@ -99,7 +105,7 @@ intervalMarks :: Scale -> [Bool]
 intervalMarks s = marks intervals (scale s)
 
 intervalGrade :: Interval -> Int
-intervalGrade i = val i $ zip [Root ..] [0..]
+intervalGrade i = val i $ zip intervals [0..]
 
 -- Modes stuff
 
@@ -115,27 +121,21 @@ modeGrade m = val m . zip modes . getMarked . zip [0..] $ intervalMarks Major
 -- Guitar strings stuff
 
 stringMarks :: Scale -> Mode -> Key -> Note -> [Bool]
-stringMarks s m k n = map snd . fromNote n $ markNotes s m k
+stringMarks s m k n = map snd . dropKeys n $ markNotes s m k
 
 -- Putting the pieces together
 
-scaleWithIntervals :: Scale -> Mode -> Key -> [(Note, Interval)]
+scaleWithIntervals :: Scale -> Mode -> Key -> Map Note Interval
 scaleWithIntervals s m k = zip (scaleNotes s m k) (scaleIntervals s m)
 
-relativeModes :: Mode -> Key -> [(Note, Mode)]
-relativeModes m k = fromMode Ionian $ zip (scaleNotes Major m k) (modeList m)
+relativeModes :: Mode -> Key -> Map Note Mode
+relativeModes m k = dropValues Ionian $ zip (scaleNotes Major m k) (modeList m)
 
-modulations :: Mode -> Key -> [(Note, Mode)]
-modulations m k = fromMode Ionian $ zip ns (modeList m)
+modulations :: Mode -> Key -> Map Note Mode
+modulations m k = dropValues Ionian $ zip ns (modeList m)
   where ns = map (head . findScale) [0..]
         findScale g = head $ filter (match g) (allScales Major m)
         match g s = head (drop g s) == k
-
-fromMode :: Mode -> [(a, Mode)] -> [(a, Mode)]
-fromMode m = dropWhile ((/= m) . snd)
-
-fromNote :: Note -> [(Note, a)] -> [(Note, a)]
-fromNote n = dropWhile ((/= n) . fst)
 
 --------------------
 -- Printing stuff --
@@ -202,7 +202,7 @@ columnLayout c1 c2 = zipWith layout (pad' (length c2) c1) (pad' (length c1) c2)
   where layout l1 l2 = pad padLength l1 ++ l2
         padLength = (10+) . maximum . map length $ c1
 
-column :: Show a => String -> [(Note, a)] -> [String]
+column :: Show a => String -> Map Note a -> [String]
 column title list = title : hr : printable
   where printable = tops . map grade $ list
         grade (n, a) = notePad (show n) ++ " - " ++ show a
@@ -213,9 +213,10 @@ column title list = title : hr : printable
 
 printEverything :: Scale -> Mode -> Key -> IO ()
 printEverything s m k = do
-    putStrLn $ unlines $ columns [scaleColumn s m k
-                                 ,relativeColumn m k
-                                 ,modulationColumn m k]
+    putStrLn $ unlines $ columns [ scaleColumn s m k
+                                 , relativeColumn m k
+                                 , modulationColumn m k
+                                 ]
     putStrLn $ unlines $ guitarNeck s m k
 
 main = do
