@@ -1,6 +1,7 @@
 from random import randrange, uniform, choice
 from collections import defaultdict, OrderedDict
 
+
 class Map:
     _tiles = {
         'wall': ' ',
@@ -33,6 +34,7 @@ class Map:
 
     def fits(self, x, y, w=0, h=0):
         return all([x >= 0, y >= 0, x+w < self.width, y+h < self.height])
+
 
 class Automaze:
     def __init__(self, gen=True,
@@ -72,6 +74,7 @@ class Automaze:
 
     def _add_rooms(self):
         def odd(n): return int(n/2) * 2 + 1
+
         def stretch(n): return odd(n * uniform(1.0, self.room_max_ratio))
 
         for t in range(self.room_attempts):
