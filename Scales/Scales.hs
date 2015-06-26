@@ -3,6 +3,10 @@ module Scales where
 import System.Environment (getArgs)
 import Data.List (intercalate, nub)
 
+------------------
+-- Data & Types --
+------------------
+
 data Note = C | Cs | D | Ds | E | F | Fs | G | Gs | A | As | B
     deriving (Eq, Ord, Show, Read, Enum)
 
@@ -21,7 +25,11 @@ type Key = Note
 
 type MarkedList a = [(a, Bool)]
 
--- Setup
+type Map k v = [(k, v)]
+
+-----------
+-- Setup --
+-----------
 
 guitarStrings = [E, B, G, D, A, E]
 neckDots      = [3, 5, 7, 9]
@@ -31,57 +39,109 @@ scale Major      = [Root, Second, Third, PerfectFourth, PerfectFifth, Sixth, Sev
 scale Pentatonic = [Root, Second, Third, PerfectFifth, Sixth]
 scale Blues      = [Root, Second, MinorThird, Third, PerfectFifth, Sixth]
 
--- Actual work
+---------------
+-- Real work --
+---------------
+
+-- Infinite lists are cool
 
 notes      = cycle [C ..]
 intervals  = cycle [Root ..]
 modes      = cycle [Ionian ..]
 
+noteCount = length [C ..]
+
 tops :: Eq a => [a] -> [a]
-tops = nub . take (length [C ..])
+tops = nub . take noteCount
+
+-- MarkedList stuff
 
 getMarked :: MarkedList a -> [a]
 getMarked = map fst . filter snd
 
-marks :: Scale -> [Bool]
-marks s = map (`elem` scale s) intervals
+marks :: Eq a => [a] -> [a] -> [Bool]
+marks as bs = map (`elem` bs) as
 
-grade :: Mode -> Int
-grade m = val m . zip [Ionian ..] . getMarked $ zip [0..] (marks Major)
-    where   val m = snd . head . filter ((==m) . fst)
+markList :: Eq a => [a] -> [a] -> MarkedList a
+markList as bs = zip as (marks as bs)
+
+-- Pretend we have maps and we never ask for bad keys
+
+val :: Eq k => k -> Map k v -> v
+val k = snd . head . filter ((== k) . fst)
+
+-- Scales stuff
+
+markNotes :: Scale -> Mode -> Key -> MarkedList Note
+markNotes s m k = zip (chromatic k) (modeMarks s m)
 
 chromatic :: Key -> [Note]
-chromatic k = dropWhile (/=k) notes
+chromatic k = dropWhile (/= k) notes
 
-modeMarks :: Scale -> Mode -> [Bool]
-modeMarks s m = drop (grade m) $ marks s
+allScales :: Scale -> Mode -> [[Note]]
+allScales s m = map (scaleNotes s m) [C ..]
 
-markNotes :: Key -> Scale -> Mode -> MarkedList Note
-markNotes k s m = zip (chromatic k) (modeMarks s m)
-
-markIntervals :: Scale -> Mode -> MarkedList Interval
-markIntervals s m = zip intervals (modeMarks s m)
-
-markString :: Key -> Scale -> Mode -> Note -> [Bool]
-markString k s m n = map snd . dropWhile ((/=n) . fst) $ markNotes k s m
-
-scaleNotes :: Key -> Scale -> Mode -> [Note]
-scaleNotes k s m = getMarked $ markNotes k s m
+scaleNotes :: Scale -> Mode -> Key -> [Note]
+scaleNotes s m k = getMarked $ markNotes s m k
 
 scaleIntervals :: Scale -> Mode -> [Interval]
 scaleIntervals s m = getMarked $ markIntervals s m
 
-modeScale :: Key -> Scale -> Mode -> [(Note, Interval)]
-modeScale k s m = zip (scaleNotes k s m) (scaleIntervals s m)
+scaleGrades :: Scale -> Mode -> [Int]
+scaleGrades s m = map intervalGrade (scaleIntervals s m)
 
-relatives :: Key -> Scale -> Mode -> [(Note, Mode)]
-relatives k s m = inKey . fromTop $ zip ns ms
-    where   ns = scaleNotes k Major m
-            ms = dropWhile (/=m) modes
-            fromTop = dropWhile ((/= Ionian) . snd)
-            inKey = filter ((`elem` (tops $ scaleNotes k s m)) . fst)
+-- Intervals stuff
 
--- Printing stuff
+markIntervals :: Scale -> Mode -> MarkedList Interval
+markIntervals s m = zip intervals (modeMarks s m)
+
+intervalMarks :: Scale -> [Bool]
+intervalMarks s = marks intervals (scale s)
+
+intervalGrade :: Interval -> Int
+intervalGrade i = val i $ zip [Root ..] [0..]
+
+-- Modes stuff
+
+modeList :: Mode -> [Mode]
+modeList m = dropWhile (/= m) modes
+
+modeMarks :: Scale -> Mode -> [Bool]
+modeMarks s m = drop (modeGrade m) (intervalMarks s)
+
+modeGrade :: Mode -> Int
+modeGrade m = val m . zip modes . getMarked . zip [0..] $ intervalMarks Major
+
+-- Guitar strings stuff
+
+stringMarks :: Scale -> Mode -> Key -> Note -> [Bool]
+stringMarks s m k n = map snd . fromNote n $ markNotes s m k
+
+-- Putting the pieces together
+
+scaleWithIntervals :: Scale -> Mode -> Key -> [(Note, Interval)]
+scaleWithIntervals s m k = zip (scaleNotes s m k) (scaleIntervals s m)
+
+relativeModes :: Mode -> Key -> [(Note, Mode)]
+relativeModes m k = fromMode Ionian $ zip (scaleNotes Major m k) (modeList m)
+
+modulations :: Mode -> Key -> [(Note, Mode)]
+modulations m k = fromMode Ionian $ zip ns (modeList m)
+  where ns = map (head . findScale) [0..]
+        findScale g = head $ filter (match g) (allScales Major m)
+        match g s = head (drop g s) == k
+
+fromMode :: Mode -> [(a, Mode)] -> [(a, Mode)]
+fromMode m = dropWhile ((/= m) . snd)
+
+fromNote :: Note -> [(Note, a)] -> [(Note, a)]
+fromNote n = dropWhile ((/= n) . fst)
+
+--------------------
+-- Printing stuff --
+--------------------
+
+-- Whatever
 
 clear = "\x1b[39m"
 bar   = "\x1b[37m" ++ "|"
@@ -95,47 +155,69 @@ padWith p n s = s ++ replicate (n - length s) p
 pad  = padWith ' '
 pad' = padWith ""
 
-guitarNeck :: Key -> Scale -> Mode -> [String]
-guitarNeck k s m = paddedHeader : captionedStrings
-    where   paddedHeader = pad 3 "" ++ neckHeader
-            captionedStrings =  zipWith (++) captions strings
-            captions = map (pad 3 . show) guitarStrings
-            strings = map (guitarString . markString k s m) guitarStrings
+neckPad = pad 3
+notePad = pad 2
+
+-- Guitar neck
 
 neckHeader :: String
 neckHeader = unwords . take neckLength . cycle . map fret $ tops [0..]
-    where   fret n | n == 0 = " : "
-                   | n `elem` neckDots = " " ++ show n ++ " "
-                   | otherwise = "   "
+  where fret n | n == 0            = " : "
+        fret n | n `elem` neckDots = " " ++ show n ++ " "
+        fret _                     = "   "
 
 guitarString :: [Bool] -> String
 guitarString = (++ clear) . intercalate bar . map fret . take neckLength
-    where   fret True  = off ++ on  ++ off
-            fret False = off ++ off ++ off
+  where fret True  = off ++ on  ++ off
+        fret False = off ++ off ++ off
 
-fullScale :: Key -> Scale -> Mode -> [String]
-fullScale k s m = column title (modeScale k s m)
-    where   title = show k ++ " " ++ show s ++ " " ++ show m
+guitarNeck :: Scale -> Mode -> Key -> [String]
+guitarNeck s m k = paddedHeader : captionedStrings
+  where paddedHeader = neckPad "" ++ neckHeader
+        captionedStrings =  zipWith (++) captions strings
+        captions = map (neckPad . show) guitarStrings
+        strings = map (guitarString . stringMarks s m k) guitarStrings
 
-relativeModes :: Key -> Scale -> Mode -> [String]
-relativeModes k s m = column title (relatives k s m)
-    where   title = "Relative Modes"
+-- Format columns
+
+scaleColumn :: Scale -> Mode -> Key -> [String]
+scaleColumn s m k = column title (scaleWithIntervals s m k)
+  where title = show k ++ " " ++ show s ++ " " ++ show m
+
+relativeColumn :: Mode -> Key -> [String]
+relativeColumn m k = column title (relativeModes m k)
+  where title = "Same as..."
+
+modulationColumn :: Mode -> Key -> [String]
+modulationColumn m k = column title (modulations m k)
+  where title = "Play these " ++ show m ++ " modes to get..."
+
+-- Such layout very impress wow
+
+columns :: [[String]] -> [String]
+columns = foldl1 columnLayout
 
 columnLayout :: [String] -> [String] -> [String]
 columnLayout c1 c2 = zipWith layout (pad' (length c2) c1) (pad' (length c1) c2)
-    where   layout l1 l2 = (pad padLength l1) ++ l2
-            padLength = (10+) . maximum . map length $ c1
+  where layout l1 l2 = pad padLength l1 ++ l2
+        padLength = (10+) . maximum . map length $ c1
 
 column :: Show a => String -> [(Note, a)] -> [String]
 column title list = title : hr : printable
-    where   printable = tops . map grade $ list
-            grade (n, a) = pad 2 (show n) ++ " - " ++ show a
+  where printable = tops . map grade $ list
+        grade (n, a) = notePad (show n) ++ " - " ++ show a
 
-printEverything :: Key -> Scale -> Mode -> IO ()
-printEverything k s m = do
-    putStrLn $ unlines $ columnLayout (fullScale k s m) (relativeModes k s m)
-    putStrLn $ unlines $ guitarNeck k s m
+----------
+-- Main --
+----------
+
+printEverything :: Scale -> Mode -> Key -> IO ()
+printEverything s m k = do
+    putStrLn $ unlines $ columns [scaleColumn s m k
+                                 ,relativeColumn m k
+                                 ,modulationColumn m k]
+    putStrLn $ unlines $ guitarNeck s m k
 
 main = do
     [key, scale, mode] <- getArgs
-    printEverything (read key) (read scale) (read mode)
+    printEverything (read scale) (read mode) (read key)
