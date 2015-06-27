@@ -1,7 +1,7 @@
 module Scales where
 
-import Data.List (intercalate, nub)
 import System.Environment (getArgs)
+import Data.List (intercalate, nub)
 
 ------------------
 -- Data & Types --
@@ -76,6 +76,12 @@ dropKeys k = dropWhile ((/= k) . fst)
 dropValues :: Eq v => v -> Map k v -> Map k v
 dropValues v = dropWhile ((/= v) . snd)
 
+keys :: Map k v -> [k]
+keys = map fst
+
+vals :: Map k v -> [v]
+vals = map snd
+
 -- Scales stuff
 
 markNotes :: Scale -> Mode -> Key -> MarkedList Note
@@ -123,6 +129,9 @@ modeGrade m = val m . zip modes . getMarked . zip [0..] $ intervalMarks Major
 stringMarks :: Scale -> Mode -> Key -> Note -> [Bool]
 stringMarks s m k n = map snd . dropKeys n $ markNotes s m k
 
+allStrings :: Scale -> Mode -> Key -> [Note] -> [[Bool]]
+allStrings s m k = map (stringMarks s m k)
+
 -- Putting the pieces together
 
 scaleWithIntervals :: Scale -> Mode -> Key -> Map Note Interval
@@ -155,16 +164,14 @@ padWith p n s = s ++ replicate (n - length s) p
 pad  = padWith ' '
 pad' = padWith ""
 
-neckPad = pad 3
-notePad = pad 2
+padList :: [String] -> [String]
+padList ss = map (pad l) ss
+  where l = maximum . map length $ ss
 
 -- Guitar neck
 
-neckHeader :: String
-neckHeader = unwords . take neckLength . cycle . map fret $ tops [0..]
-  where fret n | n == 0            = " : "
-        fret n | n `elem` neckDots = " " ++ show n ++ " "
-        fret _                     = "   "
+allGuitarStrings :: [[Bool]] -> [String]
+allGuitarStrings = map guitarString
 
 guitarString :: [Bool] -> String
 guitarString = (++ clear) . intercalate bar . map fret . take neckLength
@@ -172,40 +179,46 @@ guitarString = (++ clear) . intercalate bar . map fret . take neckLength
         fret False = off ++ off ++ off
 
 guitarNeck :: Scale -> Mode -> Key -> [String]
-guitarNeck s m k = paddedHeader : captionedStrings
-  where paddedHeader = neckPad "" ++ neckHeader
-        captionedStrings =  zipWith (++) captions strings
-        captions = map (neckPad . show) guitarStrings
-        strings = map (guitarString . stringMarks s m k) guitarStrings
+guitarNeck s m k = columnLayout " " captions (neckHeader : strings)
+  where captions = "" : map show guitarStrings
+        strings = allGuitarStrings (allStrings s m k guitarStrings)
 
--- Format columns
-
-scaleColumn :: Scale -> Mode -> Key -> [String]
-scaleColumn s m k = column title (scaleWithIntervals s m k)
-  where title = show k ++ " " ++ show s ++ " " ++ show m
-
-relativeColumn :: Mode -> Key -> [String]
-relativeColumn m k = column title (relativeModes m k)
-  where title = "Same as..."
-
-modulationColumn :: Mode -> Key -> [String]
-modulationColumn m k = column title (modulations m k)
-  where title = "Play these " ++ show m ++ " modes to get..."
+neckHeader :: String
+neckHeader = unwords . take neckLength . cycle . map fret $ tops [0..]
+  where fret n | n == 0            = " : "
+        fret n | n `elem` neckDots = " " ++ show n ++ " "
+        fret _                     = "   "
 
 -- Such layout very impress wow
 
+showMap :: (Show k, Show v) => Map k v -> [String]
+showMap m = columnLayout " - " ks vs
+  where ks = map show (keys m)
+        vs = map show (vals m)
+
 columns :: [[String]] -> [String]
-columns = foldl1 columnLayout
+columns = foldl1 (columnLayout "     ")
 
-columnLayout :: [String] -> [String] -> [String]
-columnLayout c1 c2 = zipWith layout (pad' (length c2) c1) (pad' (length c1) c2)
-  where layout l1 l2 = pad padLength l1 ++ l2
-        padLength = (10+) . maximum . map length $ c1
+columnLayout :: String -> [String] -> [String] -> [String]
+columnLayout s c1 c2 = zipWith layout (padList c1') c2'
+  where layout l1 l2 = l1 ++ s ++ l2
+        [c1', c2'] = map (pad' padLength) [c1, c2]
+        padLength = max (length c1) (length c2)
 
-column :: Show a => String -> Map Note a -> [String]
-column title list = title : hr : printable
-  where printable = tops . map grade $ list
-        grade (n, a) = notePad (show n) ++ " - " ++ show a
+scaleColumn :: Scale -> Mode -> Key -> [String]
+scaleColumn s m k = mapWithHeader title (scaleWithIntervals s m k)
+  where title = show k ++ " " ++ show s ++ " " ++ show m
+
+relativeColumn :: Mode -> Key -> [String]
+relativeColumn m k = mapWithHeader title (relativeModes m k)
+  where title = "Same as..."
+
+modulationColumn :: Mode -> Key -> [String]
+modulationColumn m k = mapWithHeader title (modulations m k)
+  where title = "Play these " ++ show m ++ " modes to get..."
+
+mapWithHeader :: (Show k, Show v, Eq k, Eq v) => String -> Map k v -> [String]
+mapWithHeader t m = t : hr : showMap (tops m)
 
 ----------
 -- Main --
