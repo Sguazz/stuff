@@ -99,9 +99,6 @@ scaleNotes s m k = getMarked $ markNotes s m k
 scaleIntervals :: Scale -> Mode -> [Interval]
 scaleIntervals s m = getMarked $ markIntervals s m
 
-scaleGrades :: Scale -> Mode -> [Int]
-scaleGrades s m = map intervalGrade (scaleIntervals s m)
-
 -- Intervals stuff
 
 markIntervals :: Scale -> Mode -> MarkedList Interval
@@ -109,9 +106,6 @@ markIntervals s m = zip intervals (modeMarks s m)
 
 intervalMarks :: Scale -> [Bool]
 intervalMarks s = marks intervals (scale s)
-
-intervalGrade :: Interval -> Int
-intervalGrade i = val i $ zip intervals [0..]
 
 -- Modes stuff
 
@@ -164,32 +158,17 @@ padWith p n s = s ++ replicate (n - length s) p
 pad  = padWith ' '
 pad' = padWith ""
 
-padList :: [String] -> [String]
-padList ss = map (pad l) ss
+padListWith :: (Int -> [a] -> [a]) -> [[a]] -> [[a]]
+padListWith p ss = map (p l) ss
   where l = maximum . map length $ ss
 
--- Guitar neck
-
-allGuitarStrings :: [[Bool]] -> [String]
-allGuitarStrings = map guitarString
-
-guitarString :: [Bool] -> String
-guitarString = (++ clear) . intercalate bar . map fret . take neckLength
-  where fret True  = off ++ on  ++ off
-        fret False = off ++ off ++ off
-
-guitarNeck :: Scale -> Mode -> Key -> [String]
-guitarNeck s m k = columnLayout " " captions (neckHeader : strings)
-  where captions = "" : map show guitarStrings
-        strings = allGuitarStrings (allStrings s m k guitarStrings)
-
-neckHeader :: String
-neckHeader = unwords . take neckLength . cycle . map fret $ tops [0..]
-  where fret n | n == 0            = " : "
-        fret n | n `elem` neckDots = " " ++ show n ++ " "
-        fret _                     = "   "
+padList  = padListWith pad
+padList' = padListWith pad'
 
 -- Such layout very impress wow
+
+mapWithHeader :: (Show k, Show v, Eq k, Eq v) => String -> Map k v -> [String]
+mapWithHeader t m = t : hr : showMap (tops m)
 
 showMap :: (Show k, Show v) => Map k v -> [String]
 showMap m = columnLayout " - " ks vs
@@ -202,8 +181,30 @@ columns = foldl1 (columnLayout "     ")
 columnLayout :: String -> [String] -> [String] -> [String]
 columnLayout s c1 c2 = zipWith layout (padList c1') c2'
   where layout l1 l2 = l1 ++ s ++ l2
-        [c1', c2'] = map (pad' padLength) [c1, c2]
-        padLength = max (length c1) (length c2)
+        [c1', c2'] = padList' [c1, c2]
+
+-- Guitar neck
+
+guitarNeck :: Scale -> Mode -> Key -> [String]
+guitarNeck s m k = columnLayout " " captions (neckHeader : strings)
+  where captions = "" : map show guitarStrings
+        strings = allGuitarStrings $ allStrings s m k guitarStrings
+
+allGuitarStrings :: [[Bool]] -> [String]
+allGuitarStrings = map guitarString
+
+guitarString :: [Bool] -> String
+guitarString = (++ clear) . intercalate bar . map fret . take neckLength
+  where fret True  = off ++ on  ++ off
+        fret False = off ++ off ++ off
+
+neckHeader :: String
+neckHeader = unwords . take neckLength . cycle . map fret $ tops [0..]
+  where fret n | n == 0            = " : "
+        fret n | n `elem` neckDots = " " ++ show n ++ " "
+        fret _                     = "   "
+
+-- Things we want to see
 
 scaleColumn :: Scale -> Mode -> Key -> [String]
 scaleColumn s m k = mapWithHeader title (scaleWithIntervals s m k)
@@ -216,9 +217,6 @@ relativeColumn m k = mapWithHeader title (relativeModes m k)
 modulationColumn :: Mode -> Key -> [String]
 modulationColumn m k = mapWithHeader title (modulations m k)
   where title = "Play these " ++ show m ++ " modes to get..."
-
-mapWithHeader :: (Show k, Show v, Eq k, Eq v) => String -> Map k v -> [String]
-mapWithHeader t m = t : hr : showMap (tops m)
 
 ----------
 -- Main --
