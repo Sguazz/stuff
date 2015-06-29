@@ -118,6 +118,10 @@ modeMarks s m = drop (modeGrade m) (intervalMarks s)
 modeGrade :: Mode -> Int
 modeGrade m = val m . zip modes . getMarked . zip [0..] $ intervalMarks Major
 
+findModulation :: Mode -> Key -> Mode -> Key
+findModulation m k t = head $ drop grade (chromatic k)
+  where grade = noteCount + modeGrade m - modeGrade t
+
 -- Guitar strings stuff
 
 stringMarks :: Scale -> Mode -> Key -> Note -> [Bool]
@@ -136,9 +140,7 @@ relativeModes m k = dropValues Ionian $ zip (scaleNotes Major m k) (modeList m)
 
 modulations :: Mode -> Key -> Map Note Mode
 modulations m k = dropValues Ionian $ zip ns (modeList m)
-  where ns = map (head . findScale) [0..]
-        findScale g = head $ filter (match g) (allScales Major m)
-        match g s = head (drop g s) == k
+  where ns = map (findModulation m k) (modeList m)
 
 --------------------
 -- Printing stuff --
@@ -199,8 +201,9 @@ guitarString = (++ clear) . intercalate bar . map fret . take neckLength
         fret False = off ++ off ++ off
 
 neckHeader :: String
-neckHeader = unwords . take neckLength . cycle . map fret $ tops [0..]
-  where fret n | n == 0            = " : "
+neckHeader = unwords . take neckLength $ frets
+  where frets = cycle . tops . map fret $ [0..]
+        fret n | n == 0            = " : "
         fret n | n `elem` neckDots = " " ++ show n ++ " "
         fret _                     = "   "
 
