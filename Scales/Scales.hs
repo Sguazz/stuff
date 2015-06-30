@@ -188,8 +188,8 @@ columnLayout s c1 c2 = zipWith layout (padList c1') c2'
 -- Guitar neck
 
 guitarNeck :: Scale -> Mode -> Key -> [String]
-guitarNeck s m k = columnLayout " " captions (neckHeader : strings)
-  where captions = "" : map show guitarStrings
+guitarNeck s m k = columnLayout " " ("" : captions) (neckHeader : strings)
+  where captions = map show guitarStrings
         strings = allGuitarStrings $ allStrings s m k guitarStrings
 
 allGuitarStrings :: [[Bool]] -> [String]

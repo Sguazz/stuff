@@ -12,23 +12,26 @@ import Scales hiding (main)
 -- QuickCheck setup --
 ----------------------
 
-instance Arbitrary Note where
-    arbitrary = oneof $ map return [C ..]
+instance Arbitrary Scale where
+    arbitrary = oneof $ map return [Major, Pentatonic, Blues]
 
 instance Arbitrary Mode where
     arbitrary = oneof $ map return [Ionian ..]
+
+instance Arbitrary Note where
+    arbitrary = oneof $ map return [C ..]
 
 ------------------
 -- Actual tests --
 ------------------
 
-prop_modulate :: Mode -> Key -> Mode -> Bool
-prop_modulate m1 k1 m2 = sortedMajor m2 k1 == sortedMajor m1 k2
+prop_modulate :: Scale -> Mode -> Key -> Mode -> Bool
+prop_modulate s m1 k1 m2 = sortedScale s m2 k1 == sortedScale s m1 k2
   where k2 = findModulation m1 k1 m2
 
-prop_transpose :: Mode -> Key -> Bool
-prop_transpose m k = all (== sortedMajor m k) scales
-  where scales = map sortedMajor' $ tops $ relativeModes m k
+prop_transpose :: Scale -> Mode -> Key -> Bool
+prop_transpose s m k = all (== sortedScale s m k) scales
+  where scales = map (sortedScale' s) . tops $ relativeModes m k
 
 -------------
 -- Helpers --
@@ -37,9 +40,7 @@ prop_transpose m k = all (== sortedMajor m k) scales
 sortedScale :: Scale -> Mode -> Key -> [Note]
 sortedScale s m k = sort . tops $ scaleNotes s m k
 
-sortedMajor = sortedScale Major
-
-sortedMajor' (k, m) = sortedMajor m k
+sortedScale' s (k, m) = sortedScale s m k
 
 -----------------------
 -- A very wacky Main --
