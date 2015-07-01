@@ -1,7 +1,7 @@
 module Scales where
 
-import System.Environment (getArgs)
-import Data.List (intercalate, nub)
+import Data.List
+import System.Environment
 
 ------------------
 -- Data & Types --
@@ -52,7 +52,7 @@ modes      = cycle [Ionian ..]
 noteCount = length [C ..]
 
 tops :: Eq a => [a] -> [a]
-tops = nub . take noteCount
+tops = take noteCount
 
 -- MarkedList stuff
 
@@ -170,12 +170,15 @@ padList' = padListWith pad'
 -- Such layout very impress wow
 
 mapWithHeader :: (Show k, Show v, Eq k, Eq v) => String -> Map k v -> [String]
-mapWithHeader t m = t : hr : showMap (tops m)
+mapWithHeader t m = t : hr : showMap (nub . tops $ m)
 
 showMap :: (Show k, Show v) => Map k v -> [String]
 showMap m = columnLayout " - " ks vs
   where ks = map show (keys m)
         vs = map show (vals m)
+
+rows :: [[String]] -> [String]
+rows = intercalate [""]
 
 columns :: [[String]] -> [String]
 columns = foldl1 (columnLayout "     ")
@@ -225,14 +228,16 @@ modulationColumn m k = mapWithHeader title (modulations m k)
 -- Main --
 ----------
 
-printEverything :: Scale -> Mode -> Key -> IO ()
-printEverything s m k = do
-    putStrLn $ unlines $ columns [ scaleColumn s m k
-                                 , relativeColumn m k
-                                 , modulationColumn m k
-                                 ]
-    putStrLn $ unlines $ guitarNeck s m k
+layout :: Scale -> Mode -> Key -> [String]
+layout s m k =
+    rows [ columns [ scaleColumn s m k
+                   , relativeColumn m k
+                   , modulationColumn m k ]
+         , guitarNeck s m k ]
+
+display :: [String] -> IO ()
+display = putStrLn . unlines
 
 main = do
     [key, scale, mode] <- getArgs
-    printEverything (read scale) (read mode) (read key)
+    display $ layout (read scale) (read mode) (read key)
